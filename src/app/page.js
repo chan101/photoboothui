@@ -14,12 +14,21 @@ import ChecklistIcon from '@mui/icons-material/Checklist';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import RemoveDoneIcon from '@mui/icons-material/RemoveDone';
 import CloseIcon from '@mui/icons-material/Close';
-
 import ImageList from '@mui/material/ImageList';
 import ImageListItem from '@mui/material/ImageListItem';
-
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemAvatar from '@mui/material/ListItemAvatar';
+import Avatar from '@mui/material/Avatar';
+import ImageIcon from '@mui/icons-material/Image';
+import WorkIcon from '@mui/icons-material/Work';
+import BeachAccessIcon from '@mui/icons-material/BeachAccess';
+import { useDynamicCols } from './utils';
 
 export default function ControlledOpenSpeedDial() {
+  // Get dynamic column count based on screen size
+  const cols = useDynamicCols();
 
   const [speedDialOpen, setspeedDialOpenOpen] = React.useState(false);
   const handleOpen = () => setspeedDialOpenOpen(true);
@@ -95,8 +104,9 @@ export default function ControlledOpenSpeedDial() {
 
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100vh', transform: 'translateZ(0px)', flexGrow: 1 }}>
-      
-      <ImageList sx={{ width: '100%', height: '100%' }} cols={3}>
+
+      <ImageList sx={{ width: '100%', height: '100%' }} cols={cols}>
+
       {itemData.map((item) => (
         <ImageListItem 
           key={item.img} 
@@ -107,6 +117,7 @@ export default function ControlledOpenSpeedDial() {
             }
           }}
         >
+
           {selectMode && <Checkbox
             size="small"
             checked={selected.has(item.img)}
