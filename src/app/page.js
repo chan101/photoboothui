@@ -27,11 +27,12 @@ import Button from '@mui/material/Button';
 import { useTheme } from '@mui/material/styles';
 import { useRouter, usePathname } from 'next/navigation';
 import { useDynamicCols, downloadSelectedImages, createFolderAPI, uploadFiles, fetchFolderAndImageData } from './utils';
+import ErrorSnackbar from './components/ErrorSnackbar';
 
 export default function ControlledOpenSpeedDial() {
   const theme = useTheme();
   const router = useRouter();
-  const pathname = usePathname();
+  const [pathname, setPathname] = React.useState('/');
   // Get dynamic column count based on screen size
   const cols = useDynamicCols();
 
@@ -52,6 +53,15 @@ export default function ControlledOpenSpeedDial() {
   const [folderName, setFolderName] = React.useState('');
   const [isCreatingFolder, setIsCreatingFolder] = React.useState(false);
 
+
+  const [openError, setOpenError] = React.useState(false);
+  const [messageError, setMessageError] = React.useState('');
+  const throwErrorSnackbar = (errorMsg) => {
+    setOpenError(true);
+    setMessageError(errorMsg);
+  }
+
+
   const handleCreateFolderOpen = () => {
     setCreateFolderOpen(true);
     setFolderName('');
@@ -63,11 +73,13 @@ export default function ControlledOpenSpeedDial() {
   };
 
   const handleCreateFolder = async () => {
+
+    const folderContext = pathname;
     if (!folderName.trim()) return;
     
     setIsCreatingFolder(true);
     try {
-      const newFolder = await createFolderAPI(folderName);
+      const newFolder = await createFolderAPI(folderName,folderContext,throwErrorSnackbar);
       if (newFolder) {
         folders.push(newFolder);
         setFolderName('');
@@ -99,7 +111,7 @@ export default function ControlledOpenSpeedDial() {
 
     setIsUploading(true);
     try {
-      const success = await uploadFiles(files);
+      const success = await uploadFiles(files,pathname);
       if (success) {
         // eslint-disable-next-line no-console
         console.log('Files uploaded successfully');
@@ -129,7 +141,7 @@ export default function ControlledOpenSpeedDial() {
       try {
         // Get the folder context from pathname
         // If pathname is '/', use '/photos', otherwise use the pathname
-        const folderContext = pathname === '/' ? '/photos' : pathname;
+        const folderContext = pathname;
 
         // Use utility function to fetch both folders and images
         const { folders: foldersData, images: imagesData } = await fetchFolderAndImageData(folderContext);
@@ -175,8 +187,22 @@ export default function ControlledOpenSpeedDial() {
 
   // handle folder click to navigate
   const handleFolderClick = (folderName) => {
-    router.push(`/${folderName}`);
-  };
+    setPathname((prev) => {
+      const newPath = prev === '/' ? `/${folderName}` : `${prev}/${folderName}`;
+      return newPath;
+  });
+}
+
+  // handle parent folder click to navigate
+  const handleParentFolderClick = () => {
+    setPathname((prev) => {
+      prev.split('/');
+      const parts = prev === '/' ? [] : prev.split('/').filter(part => part);
+      parts.pop(); // remove last part
+      const newPath = parts.length === 0 ? '/' : `/${parts.join('/')}`;
+      return newPath;
+  });
+}
 
   // conditional actions based on selectMode
   const actions = selectMode
@@ -195,9 +221,34 @@ export default function ControlledOpenSpeedDial() {
 
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100vh', transform: 'translateZ(0px)', flexGrow: 1 }}>
-
+<ErrorSnackbar
+  open={openError}
+  onClose={() => setOpenError(false)}
+  message={messageError}
+/>
       <ImageList sx={{ width: '100%', height: '100%' }} cols={cols}>
-
+        {pathname !== '/' && <ImageListItem 
+          key="parent-folder"
+          onClick={() => handleParentFolderClick()}
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[100],
+            cursor: 'pointer',
+            '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200] }
+          }}
+        >
+          <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <FolderIcon sx={{ fontSize: 48, color: theme.palette.primary.main, marginBottom: 1 }} />
+            <Typography variant="body2" sx={{ fontWeight: 500, marginBottom: 0.5, color: theme.palette.text.primary }}>
+              .. (Parent Folder)
+            </Typography>
+            <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+              
+            </Typography>
+          </Box>
+        </ImageListItem>}
       {folders.map((folder) => (
         <ImageListItem 
           key={folder.name}
@@ -224,8 +275,8 @@ export default function ControlledOpenSpeedDial() {
       ))}
 
       {itemData.map((item) => (
-        <ImageListItem 
-          key={item.img} 
+        <ImageListItem
+          key={item.img}
           sx={{ position: 'relative', cursor: selectMode ? 'pointer' : 'default' }}
           onClick={() => {
             if (selectMode) {
@@ -234,27 +285,32 @@ export default function ControlledOpenSpeedDial() {
           }}
         >
 
-          {selectMode && <Checkbox
-            size="small"
-            checked={selected.has(item.img)}
-            onChange={() => toggleSelect(item.img)}
-            inputProps={{ 'aria-label': `Select ${item.title}` }}
-            sx={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              zIndex: 2,
-              bgcolor: 'rgba(255,255,255,0.75)',
-              borderRadius: '50%'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />}
-          <img
-            srcSet={`${item.img}?w=164&h=164&fit=crop&auto=format&dpr=2 2x`}
-            src={`${item.img}?w=164&h=164&fit=crop&auto=format`}
-            alt={item.title}
-            loading="lazy"
-          />
+          {selectMode && (
+            <Checkbox
+              size="small"
+              checked={selected.has(item.img)}
+              onChange={() => toggleSelect(item.img)}
+              inputProps={{ 'aria-label': `Select ${item.title}` }}
+              sx={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                zIndex: 2,
+                bgcolor: 'rgba(255,255,255,0.75)',
+                borderRadius: '50%'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
+
+          <Box sx={{ width: '100%', aspectRatio: '1 / 1', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <img
+              src={item.img}
+              alt={item.title}
+              loading="lazy"
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
+            />
+          </Box>
         </ImageListItem>
       ))}
     </ImageList>
@@ -348,206 +404,3 @@ export default function ControlledOpenSpeedDial() {
     </Box>
   );
 }
-
-// Dummy data arrays (kept for reference, actual data loaded from API)
-const DEFAULT_FOLDERS = [
-  { name: 'Photos', date: '2023-10-01' },
-  { name: 'Videos', date: '2023-09-15' },
-  { name: 'Documents', date: '2023-08-20' },  
-];
-
-
-const DEFAULT_ITEM_DATA = [
-  {
-    img: 'https://images.unsplash.com/photo-1551963831-b3b1ca40c98e',
-    title: 'Breakfast',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d',
-    title: 'Burger',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1522770179533-24471fcdba45',
-    title: 'Camera',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1444418776041-9c7e33cc5a9c',
-    title: 'Coffee',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1533827432537-70133748f5c8',
-    title: 'Hats',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62',
-    title: 'Honey',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1516802273409-68526ee1bdd6',
-    title: 'Basketball',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1518756131217-31eb79b20e8f',
-    title: 'Fern',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1597645587822-e99fa5d45d25',
-    title: 'Mushrooms',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1567306301408-9b74779a11af',
-    title: 'Tomato basil',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1471357674240-e1a485acb3e1',
-    title: 'Sea star',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1589118949245-7d38baf380d6',
-    title: 'Bike',
-  },
-    {
-    img: 'https://images.unsplash.com/photo-1551963831-b3b1ca40c98e',
-    title: 'Breakfast',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d',
-    title: 'Burger',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1522770179533-24471fcdba45',
-    title: 'Camera',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1444418776041-9c7e33cc5a9c',
-    title: 'Coffee',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1533827432537-70133748f5c8',
-    title: 'Hats',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62',
-    title: 'Honey',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1516802273409-68526ee1bdd6',
-    title: 'Basketball',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1518756131217-31eb79b20e8f',
-    title: 'Fern',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1597645587822-e99fa5d45d25',
-    title: 'Mushrooms',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1567306301408-9b74779a11af',
-    title: 'Tomato basil',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1471357674240-e1a485acb3e1',
-    title: 'Sea star',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1589118949245-7d38baf380d6',
-    title: 'Bike',
-  },
-    {
-    img: 'https://images.unsplash.com/photo-1551963831-b3b1ca40c98e',
-    title: 'Breakfast',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d',
-    title: 'Burger',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1522770179533-24471fcdba45',
-    title: 'Camera',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1444418776041-9c7e33cc5a9c',
-    title: 'Coffee',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1533827432537-70133748f5c8',
-    title: 'Hats',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62',
-    title: 'Honey',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1516802273409-68526ee1bdd6',
-    title: 'Basketball',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1518756131217-31eb79b20e8f',
-    title: 'Fern',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1597645587822-e99fa5d45d25',
-    title: 'Mushrooms',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1567306301408-9b74779a11af',
-    title: 'Tomato basil',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1471357674240-e1a485acb3e1',
-    title: 'Sea star',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1589118949245-7d38baf380d6',
-    title: 'Bike',
-  },
-    {
-    img: 'https://images.unsplash.com/photo-1551963831-b3b1ca40c98e',
-    title: 'Breakfast',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d',
-    title: 'Burger',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1522770179533-24471fcdba45',
-    title: 'Camera',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1444418776041-9c7e33cc5a9c',
-    title: 'Coffee',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1533827432537-70133748f5c8',
-    title: 'Hats',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1558642452-9d2a7deb7f62',
-    title: 'Honey',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1516802273409-68526ee1bdd6',
-    title: 'Basketball',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1518756131217-31eb79b20e8f',
-    title: 'Fern',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1597645587822-e99fa5d45d25',
-    title: 'Mushrooms',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1567306301408-9b74779a11af',
-    title: 'Tomato basil',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1471357674240-e1a485acb3e1',
-    title: 'Sea star',
-  },
-  {
-    img: 'https://images.unsplash.com/photo-1589118949245-7d38baf380d6',
-    title: 'Bike',
-  }
-];

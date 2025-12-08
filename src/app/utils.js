@@ -60,14 +60,16 @@ export const downloadSelectedImages = async (selected) => {
  * @param {string} folderName - Name of the folder to create
  * @returns {Promise<Object|null>} New folder object or null if failed
  */
-export const createFolderAPI = async (folderName) => {
+export const createFolderAPI = async (folderName,folderContext,throwError) => {
+
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
   try {
-    const response = await fetch('/api/folders', {
+    const response = await fetch(`${baseUrl}${folderContext}\\${folderName}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name: folderName }),
+      }
     });
 
     if (response.status === 200) {
@@ -79,10 +81,12 @@ export const createFolderAPI = async (folderName) => {
     }
     // eslint-disable-next-line no-console
     console.error('Failed to create folder');
+    throwError('Failed to create folder');
     return null;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Error creating folder:', err);
+    throwError(err.message);
     return null;
   }
 };
@@ -92,7 +96,9 @@ export const createFolderAPI = async (folderName) => {
  * @param {FileList} files - Files to upload
  * @returns {Promise<boolean>} True if upload succeeded, false otherwise
  */
-export const uploadFiles = async (files) => {
+export const uploadFiles = async (files,folderContext) => {
+
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   if (!files || files.length === 0) return false;
 
   try {
@@ -101,8 +107,8 @@ export const uploadFiles = async (files) => {
       formData.append('files', files[i]);
     }
 
-    const response = await fetch('/api/upload', {
-      method: 'POST',
+    const response = await fetch(`${baseUrl}${folderContext}`, {
+      method: 'PUT',
       body: formData,
     });
 
@@ -128,27 +134,45 @@ export const uploadFiles = async (files) => {
  * @returns {Promise<{folders: Array, images: Array}>} - Object containing folders and images arrays
  */
 export const fetchFolderAndImageData = async (folderContext) => {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  // Expose STATIC_RESOURCE_PATH to the browser via NEXT_PUBLIC_ prefix
+  const staticResourcePath = process.env.NEXT_PUBLIC_STATIC_RESOURCE_PATH || baseUrl || '/images';
   try {
-    // Fetch folders list
-    const foldersResponse = await fetch(`/api/folders${folderContext}`);
-    let folders = [];
-    if (foldersResponse.ok) {
-      const foldersData = await foldersResponse.json();
-      folders = Array.isArray(foldersData) ? foldersData : [];
-    } else {
+    const url = `${baseUrl}${folderContext}`;
+    const response = await fetch(url);
+    if (!response.ok) {
       // eslint-disable-next-line no-console
-      console.error('Failed to fetch folders');
+      console.error('Failed to fetch entries from', url);
+      return { folders: [], images: [] };
     }
 
-    // Fetch images list
-    const imagesResponse = await fetch(`/api/images${folderContext}`);
-    let images = [];
-    if (imagesResponse.ok) {
-      const imagesData = await imagesResponse.json();
-      images = Array.isArray(imagesData) ? imagesData : [];
+    const entries = await response.json();
+
+    // entries expected to be an array of { file: '/path', type: 'F'|'D' }
+    const folders = [];
+    const images = [];
+
+    if (Array.isArray(entries)) {
+      entries.forEach((entry) => {
+        const path = typeof entry.file === 'string' ? entry.file : '';
+        const name = path.replace(/^\//, '');
+
+        if (entry.type === 'D') {
+          folders.push({ name, date: entry.date || null });
+        } else {
+          const ext = (name.split('.').pop() || '').toLowerCase();
+          const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
+          images.push({
+            img: isImage ? `${staticResourcePath}${path}` : null,
+            title: name,
+            url: `${baseUrl}${path}`,
+            type: ext,
+          });
+        }
+      });
     } else {
       // eslint-disable-next-line no-console
-      console.error('Failed to fetch images');
+      console.error('Unexpected API response format:', entries);
     }
 
     return { folders, images };
