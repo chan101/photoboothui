@@ -180,8 +180,12 @@ export default function ControlledOpenSpeedDial() {
 
     // delete selected images
   const deleteSelected = () => {
-    deleteSelectedImages(selected, pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar);
+    deleteSelectedImages(selected, pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar, null);
   };
+
+  const handleDeleteFolder = (folderName) => {
+    deleteSelectedImages('folder', pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar, folderName);
+  }
 
   // bulk select/unselect
   const selectAll = () => {
@@ -245,7 +249,7 @@ export default function ControlledOpenSpeedDial() {
         message={messageSuccess}
       />
       <ImageList cols={cols}>
-        {<FolderList folders={folders} handleFolderClick={handleFolderClick} theme={theme} pathname={pathname} handleParentFolderClick={handleParentFolderClick}/>}
+        {<FolderList folders={folders} handleFolderClick={handleFolderClick} theme={theme} pathname={pathname} handleParentFolderClick={handleParentFolderClick} handleDeleteFolder={handleDeleteFolder}/>}
         <MyImageList itemData={itemData} selectMode={selectMode} selected={selected} toggleSelect={toggleSelect} theme={theme}/>
       </ImageList>
 

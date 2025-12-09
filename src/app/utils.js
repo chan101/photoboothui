@@ -58,16 +58,22 @@ export const downloadSelectedImages = async (selected) => {
 
 
 
-export const deleteSelectedImages = async (selected, folderContext, setIsLoading, setRefresh, showSuccess, throwError) => {
+export const deleteSelectedImages = async (selected, folderContext, setIsLoading, setRefresh, showSuccess, throwError, folderName) => {
   setIsLoading(true);
-  if (selected.size === 0) return;
+  if (selected !== 'folder' && selected.size === 0) return;
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-  //loop the selected
-  let requests = [];
-  for (const url of Array.from(selected)) {
-    const imageName = url.split('/').pop();
-    requests.push(imageName);
+  let requests;
+  if(selected === 'folder'){
+    requests = {'folder':folderName};
   }
+  else{
+      let requests = [];
+      for (const url of Array.from(selected)) {
+      const imageName = url.split('/').pop();
+      requests.push(imageName);
+    }
+  }
+
   try{
     const response = await fetch(`${baseUrl}${folderContext}`, {
       method: 'DELETE',
@@ -77,14 +83,13 @@ export const deleteSelectedImages = async (selected, folderContext, setIsLoading
       body: JSON.stringify(requests),
     });
     if (response.ok) {
-      // eslint-disable-next-line no-console
-      console.log('Images deleted successfully');
+      console.log('File/s deleted successfully');
       setIsLoading(false);
       setRefresh(prev => prev+1);
-      showSuccess("Image/s deleted successfully")
+      showSuccess("File/s deleted successfully")
       return true;
     }
-    // eslint-disable-next-line no-console
+    
     console.error('Failed to delete images');
     throwError('Failed to delete images');
     setIsLoading(false);
@@ -92,7 +97,6 @@ export const deleteSelectedImages = async (selected, folderContext, setIsLoading
     return false;
   }
   catch(err){
-    // eslint-disable-next-line no-console
     console.error('Error deleting images:', err);
     throwError('Error deleting images');
     setIsLoading(false);
@@ -175,6 +179,7 @@ export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSu
       // eslint-disable-next-line no-console
       console.error('Failed to fetch entries from', url);
       setIsLoading(false);
+      throwError("Request failed! some shit ain't working right.")
       return { folders: [], images: [] };
     }
 
@@ -215,7 +220,7 @@ export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSu
     // eslint-disable-next-line no-console
     console.error('Error fetching folder and image data:', err);
     setIsLoading(false);
-    //throwError("unexpected error loading...");
+    throwError("Uhhhhh......some shit ain't working right. Gotta check the f**king logs");
     return { folders: [], images: [] };
   }
   
