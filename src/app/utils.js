@@ -1,4 +1,5 @@
 import { useMediaQuery, useTheme } from '@mui/material';
+import axios from 'axios';
 
 /**
  * Hook to get dynamic column count based on screen size
@@ -19,8 +20,8 @@ export const useDynamicCols = () => {
 
   if (isXs) return 2;
   if (isSm) return 3;
-  if (isMd) return 4;
-  if (isLg) return 5;
+  if (isMd) return 5;
+  if (isLg) return 7;
   
   // Default fallback
   return 3;
@@ -55,13 +56,53 @@ export const downloadSelectedImages = async (selected) => {
   }
 };
 
-/**
- * Create a new folder via API
- * @param {string} folderName - Name of the folder to create
- * @returns {Promise<Object|null>} New folder object or null if failed
- */
-export const createFolderAPI = async (folderName,folderContext,throwError) => {
 
+
+export const deleteSelectedImages = async (selected, folderContext, setIsLoading, setRefresh, showSuccess, throwError) => {
+  setIsLoading(true);
+  if (selected.size === 0) return;
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  //loop the selected
+  let requests = [];
+  for (const url of Array.from(selected)) {
+    const imageName = url.split('/').pop();
+    requests.push(imageName);
+  }
+  try{
+    const response = await fetch(`${baseUrl}${folderContext}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requests),
+    });
+    if (response.ok) {
+      // eslint-disable-next-line no-console
+      console.log('Images deleted successfully');
+      setIsLoading(false);
+      setRefresh(prev => prev+1);
+      showSuccess("Image/s deleted successfully")
+      return true;
+    }
+    // eslint-disable-next-line no-console
+    console.error('Failed to delete images');
+    throwError('Failed to delete images');
+    setIsLoading(false);
+    setRefresh(prev => prev+1);
+    return false;
+  }
+  catch(err){
+    // eslint-disable-next-line no-console
+    console.error('Error deleting images:', err);
+    throwError('Error deleting images');
+    setIsLoading(false);
+    setRefresh(prev => prev+1);
+  }
+}
+
+
+export const createFolderAPI = async (folderName,folderContext,setIsLoading,showSuccess,throwError) => {
+  setIsLoading(true);
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
   try {
@@ -77,78 +118,68 @@ export const createFolderAPI = async (folderName,folderContext,throwError) => {
         name: folderName,
         date: new Date().toISOString().split('T')[0],
       };
+      showSuccess(`${folderName} Folder created successfully.`);
+      setIsLoading(false);
       return newFolder;
     }
     // eslint-disable-next-line no-console
     console.error('Failed to create folder');
     throwError('Failed to create folder');
+    setIsLoading(false);
     return null;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Error creating folder:', err);
     throwError(err.message);
+    setIsLoading(false);
     return null;
   }
 };
 
-/**
- * Upload multiple files via FormData to the upload API
- * @param {FileList} files - Files to upload
- * @returns {Promise<boolean>} True if upload succeeded, false otherwise
- */
-export const uploadFiles = async (files,folderContext) => {
-
+export const uploadFiles = async (files, folderContext, setProgress,showSuccess, throwError) => {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   if (!files || files.length === 0) return false;
 
-  try {
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i]);
-    }
+  const formData = new FormData();
+  for (let i = 0; i < files.length; i++) {
+    formData.append('files', files[i]);
+  }
 
-    const response = await fetch(`${baseUrl}${folderContext}`, {
-      method: 'PUT',
-      body: formData,
+  try {
+    const response = await axios.put(`${baseUrl}${folderContext}`, formData, {
+      onUploadProgress: (progressEvent) => {
+        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setProgress(percent);
+      },
     });
 
-    if (response.ok) {
-      // eslint-disable-next-line no-console
-      console.log('Files uploaded successfully');
-      return true;
-    }
-    // eslint-disable-next-line no-console
-    console.error('Failed to upload files');
-    return false;
+    showSuccess(`Files uploaded successfully.`);
+    return response.status === 200;
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('Error uploading files:', err);
+    console.error("Upload error:", err);
+    throwError("Upload error");
     return false;
   }
 };
 
-/**
- * Fetch folders and images from API based on folder context
- * 
- * @param {string} folderContext - The folder path (e.g., '/photos', '/photos/trip1')
- * @returns {Promise<{folders: Array, images: Array}>} - Object containing folders and images arrays
- */
-export const fetchFolderAndImageData = async (folderContext) => {
+export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSuccess, throwError) => {
+  
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   // Expose STATIC_RESOURCE_PATH to the browser via NEXT_PUBLIC_ prefix
   const staticResourcePath = process.env.NEXT_PUBLIC_STATIC_RESOURCE_PATH || baseUrl || '/images';
   try {
+    setIsLoading(true);
     const url = `${baseUrl}${folderContext}`;
     const response = await fetch(url);
     if (!response.ok) {
       // eslint-disable-next-line no-console
       console.error('Failed to fetch entries from', url);
+      setIsLoading(false);
       return { folders: [], images: [] };
     }
 
     const entries = await response.json();
 
-    // entries expected to be an array of { file: '/path', type: 'F'|'D' }
     const folders = [];
     const images = [];
 
@@ -162,23 +193,30 @@ export const fetchFolderAndImageData = async (folderContext) => {
         } else {
           const ext = (name.split('.').pop() || '').toLowerCase();
           const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
+          const isVideo = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'].includes(ext);
           images.push({
-            img: isImage ? `${staticResourcePath}${path}` : null,
+            img: `${staticResourcePath}${folderContext}/${path}`,
             title: name,
             url: `${baseUrl}${path}`,
-            type: ext,
+            type: isImage?'img':isVideo?'vid':'unknown',
           });
         }
       });
     } else {
       // eslint-disable-next-line no-console
       console.error('Unexpected API response format:', entries);
+      //throwError("unexpected error loading...");
+      setIsLoading(false);
     }
 
+    setIsLoading(false);
     return { folders, images };
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Error fetching folder and image data:', err);
+    setIsLoading(false);
+    //throwError("unexpected error loading...");
     return { folders: [], images: [] };
   }
+  
 };

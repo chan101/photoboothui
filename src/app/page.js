@@ -5,9 +5,7 @@ import Box from '@mui/material/Box';
 import SpeedDial from '@mui/material/SpeedDial';
 import SpeedDialIcon from '@mui/material/SpeedDialIcon';
 import SpeedDialAction from '@mui/material/SpeedDialAction';
-import Checkbox from '@mui/material/Checkbox';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
-import FolderIcon from '@mui/icons-material/Folder';
 import UploadIcon from '@mui/icons-material/Upload';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
@@ -16,8 +14,6 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import RemoveDoneIcon from '@mui/icons-material/RemoveDone';
 import CloseIcon from '@mui/icons-material/Close';
 import ImageList from '@mui/material/ImageList';
-import ImageListItem from '@mui/material/ImageListItem';
-import Typography from '@mui/material/Typography';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -25,13 +21,16 @@ import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import { useTheme } from '@mui/material/styles';
-import { useRouter, usePathname } from 'next/navigation';
-import { useDynamicCols, downloadSelectedImages, createFolderAPI, uploadFiles, fetchFolderAndImageData } from './utils';
+import { useDynamicCols, downloadSelectedImages,deleteSelectedImages, createFolderAPI, uploadFiles, fetchFolderAndImageData } from './utils';
 import ErrorSnackbar from './components/ErrorSnackbar';
+import MyImageList from './components/MyImageList';
+import FolderList from './components/FolderList';
+import UploadProgressOverlay from './components/UploadProgressOverlay';
+import LoadingOverlay from './components/LoadingOverlay';
+import SuccessSnackbar from './components/SuccessSnackbar';
 
 export default function ControlledOpenSpeedDial() {
   const theme = useTheme();
-  const router = useRouter();
   const [pathname, setPathname] = React.useState('/');
   // Get dynamic column count based on screen size
   const cols = useDynamicCols();
@@ -40,6 +39,8 @@ export default function ControlledOpenSpeedDial() {
   const [folders, setFolders] = React.useState([]);
   const [itemData, setItemData] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [refresh, setRefresh] = React.useState(0);
+
   const handleOpen = () => setspeedDialOpenOpen(true);
   const handleClose = () => setspeedDialOpenOpen(false);
 
@@ -60,7 +61,12 @@ export default function ControlledOpenSpeedDial() {
     setOpenError(true);
     setMessageError(errorMsg);
   }
-
+  const [openSuccess, setOpenSuccess] = React.useState(false);
+  const [messageSuccess, setMessageSuccess] = React.useState('');
+  const showSuccessSnackbar = (successMsg) => {
+    setOpenSuccess(true);
+    setMessageSuccess(successMsg);
+  }
 
   const handleCreateFolderOpen = () => {
     setCreateFolderOpen(true);
@@ -76,21 +82,19 @@ export default function ControlledOpenSpeedDial() {
 
     const folderContext = pathname;
     if (!folderName.trim()) return;
-    
+
     setIsCreatingFolder(true);
     try {
-      const newFolder = await createFolderAPI(folderName,folderContext,throwErrorSnackbar);
+      const newFolder = await createFolderAPI(folderName, folderContext,setIsLoading, showSuccessSnackbar, throwErrorSnackbar);
       if (newFolder) {
         folders.push(newFolder);
         setFolderName('');
         setCreateFolderOpen(false);
         setSelected(new Set(selected));
       } else {
-        // eslint-disable-next-line no-console
         console.error('Failed to create folder');
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Error creating folder:', err);
     } finally {
       setIsCreatingFolder(false);
@@ -100,6 +104,7 @@ export default function ControlledOpenSpeedDial() {
   // File upload state
   const fileInputRef = React.useRef(null);
   const [isUploading, setIsUploading] = React.useState(false);
+  const [progress, setProgress] = React.useState(0);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -111,7 +116,7 @@ export default function ControlledOpenSpeedDial() {
 
     setIsUploading(true);
     try {
-      const success = await uploadFiles(files,pathname);
+      const success = await uploadFiles(files, pathname, setProgress, showSuccessSnackbar, throwErrorSnackbar);
       if (success) {
         // eslint-disable-next-line no-console
         console.log('Files uploaded successfully');
@@ -131,34 +136,35 @@ export default function ControlledOpenSpeedDial() {
     }
   };
 
-    // selection state: store selected image urls
+  // selection state: store selected image urls
   const [selected, setSelected] = React.useState(new Set());
 
   // Fetch folders and images on page load or when pathname changes
   React.useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true);
       try {
         // Get the folder context from pathname
         // If pathname is '/', use '/photos', otherwise use the pathname
         const folderContext = pathname;
 
         // Use utility function to fetch both folders and images
-        const { folders: foldersData, images: imagesData } = await fetchFolderAndImageData(folderContext);
+        const { folders: foldersData, images: imagesData } = await fetchFolderAndImageData(folderContext,setIsLoading, showSuccessSnackbar, throwErrorSnackbar);
         setFolders(foldersData);
         setItemData(imagesData);
+        setSelected(new Set());
+        setSelectMode(false);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Error fetching data:', err);
         setFolders([]);
         setItemData([]);
-      } finally {
-        setIsLoading(false);
+        setSelected(new Set());
+        setSelectMode(false);
       }
     };
 
     fetchData();
-  }, [pathname]);
+  }, [pathname, isUploading, refresh]);
 
   const toggleSelect = (id) => {
     const next = new Set(selected);
@@ -170,6 +176,11 @@ export default function ControlledOpenSpeedDial() {
   // download selected images
   const downloadSelected = () => {
     downloadSelectedImages(selected);
+  };
+
+    // delete selected images
+  const deleteSelected = () => {
+    deleteSelectedImages(selected, pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar);
   };
 
   // bulk select/unselect
@@ -190,8 +201,8 @@ export default function ControlledOpenSpeedDial() {
     setPathname((prev) => {
       const newPath = prev === '/' ? `/${folderName}` : `${prev}/${folderName}`;
       return newPath;
-  });
-}
+    });
+  }
 
   // handle parent folder click to navigate
   const handleParentFolderClick = () => {
@@ -201,122 +212,43 @@ export default function ControlledOpenSpeedDial() {
       parts.pop(); // remove last part
       const newPath = parts.length === 0 ? '/' : `/${parts.join('/')}`;
       return newPath;
-  });
-}
+    });
+  }
 
   // conditional actions based on selectMode
   const actions = selectMode
     ? [
-        { icon: <DoneAllIcon />, name: 'SelectAll', label: 'Select All' },
-        { icon: <RemoveDoneIcon />, name: 'UnselectAll', label: 'Unselect All' },
-        { icon: <DownloadIcon />, name: 'Download', label: 'Download' },
-        { icon: <DeleteForeverIcon />, name: 'Delete', label: 'Delete' },
-        { icon: <CloseIcon />, name: 'Close', label: 'Close' },
-      ]
+      { icon: <DoneAllIcon />, name: 'SelectAll', label: 'Select All' },
+      { icon: <RemoveDoneIcon />, name: 'UnselectAll', label: 'Unselect All' },
+      { icon: <DownloadIcon />, name: 'Download', label: 'Download' },
+      { icon: <DeleteForeverIcon />, name: 'Delete', label: 'Delete' },
+      { icon: <CloseIcon />, name: 'Close', label: 'Close Select Mode' },
+    ]
     : [
-        { icon: <ChecklistIcon />, name: 'Select', label: 'Select' },
-        { icon: <CreateNewFolderIcon />, name: 'CreateFolder', label: 'Create Folder' },
-        { icon: <UploadIcon />, name: 'Upload', label: 'Upload' },
-      ];
+      { icon: <ChecklistIcon />, name: 'Select', label: 'Select' },
+      { icon: <CreateNewFolderIcon />, name: 'CreateFolder', label: 'Create Folder' },
+      { icon: <UploadIcon />, name: 'Upload', label: 'Upload' },
+    ];
 
   return (
-    <Box sx={{ position: 'relative', width: '100%', height: '100vh', transform: 'translateZ(0px)', flexGrow: 1 }}>
-<ErrorSnackbar
-  open={openError}
-  onClose={() => setOpenError(false)}
-  message={messageError}
-/>
-      <ImageList sx={{ width: '100%', height: '100%' }} cols={cols}>
-        {pathname !== '/' && <ImageListItem 
-          key="parent-folder"
-          onClick={() => handleParentFolderClick()}
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[100],
-            cursor: 'pointer',
-            '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200] }
-          }}
-        >
-          <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <FolderIcon sx={{ fontSize: 48, color: theme.palette.primary.main, marginBottom: 1 }} />
-            <Typography variant="body2" sx={{ fontWeight: 500, marginBottom: 0.5, color: theme.palette.text.primary }}>
-              .. (Parent Folder)
-            </Typography>
-            <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-              
-            </Typography>
-          </Box>
-        </ImageListItem>}
-      {folders.map((folder) => (
-        <ImageListItem 
-          key={folder.name}
-          onClick={() => handleFolderClick(folder.name)}
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[100],
-            cursor: 'pointer',
-            '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200] }
-          }}
-        >
-          <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <FolderIcon sx={{ fontSize: 48, color: theme.palette.primary.main, marginBottom: 1 }} />
-            <Typography variant="body2" sx={{ fontWeight: 500, marginBottom: 0.5, color: theme.palette.text.primary }}>
-              {folder.name}
-            </Typography>
-            <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-              {new Date(folder.date).toLocaleDateString()}
-            </Typography>
-          </Box>
-        </ImageListItem>
-      ))}
+    <Box sx={{ width: '100%', height: '100vh', flexGrow: 1 }}>
+      <UploadProgressOverlay open={isUploading} progress={progress}/>
+      <LoadingOverlay open={isLoading} />
+      <ErrorSnackbar
+        open={openError}
+        onClose={() => setOpenError(false)}
+        message={messageError}
+      />
+      <SuccessSnackbar
+        open={openSuccess}
+        onClose={() => setOpenSuccess(false)}
+        message={messageSuccess}
+      />
+      <ImageList cols={cols}>
+        {<FolderList folders={folders} handleFolderClick={handleFolderClick} theme={theme} pathname={pathname} handleParentFolderClick={handleParentFolderClick}/>}
+        <MyImageList itemData={itemData} selectMode={selectMode} selected={selected} toggleSelect={toggleSelect} theme={theme}/>
+      </ImageList>
 
-      {itemData.map((item) => (
-        <ImageListItem
-          key={item.img}
-          sx={{ position: 'relative', cursor: selectMode ? 'pointer' : 'default' }}
-          onClick={() => {
-            if (selectMode) {
-              toggleSelect(item.img);
-            }
-          }}
-        >
-
-          {selectMode && (
-            <Checkbox
-              size="small"
-              checked={selected.has(item.img)}
-              onChange={() => toggleSelect(item.img)}
-              inputProps={{ 'aria-label': `Select ${item.title}` }}
-              sx={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                zIndex: 2,
-                bgcolor: 'rgba(255,255,255,0.75)',
-                borderRadius: '50%'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
-
-          <Box sx={{ width: '100%', aspectRatio: '1 / 1', backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            <img
-              src={item.img}
-              alt={item.title}
-              loading="lazy"
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
-            />
-          </Box>
-        </ImageListItem>
-      ))}
-    </ImageList>
-      
-      
-      
       <SpeedDial
         ariaLabel="SpeedDial controlled open example"
         sx={{ position: 'fixed', bottom: '15%', right: '8%' }}
@@ -356,13 +288,15 @@ export default function ControlledOpenSpeedDial() {
               if (action.name === 'Close') {
                 closeSelectMode();
               }
-              handleClose();
+              if (action.name === 'Delete') {
+                deleteSelected();
+              }
+              
             }}
           />
         ))}
       </SpeedDial>
 
-      {/* Create Folder Dialog */}
       <Dialog open={createFolderOpen} onClose={handleCreateFolderClose} maxWidth="sm" fullWidth>
         <DialogTitle>Create New Folder</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
@@ -382,17 +316,15 @@ export default function ControlledOpenSpeedDial() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCreateFolderClose}>Cancel</Button>
-          <Button 
-            onClick={handleCreateFolder} 
-            variant="contained" 
+          <Button
+            onClick={handleCreateFolder}
+            variant="contained"
             disabled={!folderName.trim() || isCreatingFolder}
           >
             {isCreatingFolder ? 'Creating...' : 'OK'}
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Hidden File Input */}
       <input
         ref={fileInputRef}
         type="file"
