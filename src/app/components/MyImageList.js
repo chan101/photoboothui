@@ -5,7 +5,7 @@ import Checkbox from '@mui/material/Checkbox';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import Typography from '@mui/material/Typography';
 
-export default function MyImageList({ itemData, selectMode, selected, toggleSelect, theme }) {
+export default function MyImageList({ itemData, selectMode, selected, toggleSelect, theme, handleFullscreenImage }) {
     return (
         <>
             {itemData.map((item) => (
@@ -13,7 +13,7 @@ export default function MyImageList({ itemData, selectMode, selected, toggleSele
                     key={item.title}
                     sx={{ position: 'relative', cursor: selectMode ? 'pointer' : 'default' }}
                     onClick={() => {
-                        if (selectMode) toggleSelect(item.img);
+                        if (selectMode){toggleSelect(item.img)}
                     }}
                 >
                     {selectMode && (
@@ -35,6 +35,9 @@ export default function MyImageList({ itemData, selectMode, selected, toggleSele
                     )}
 
                     <Box
+                        onClick={()=>{
+                            if (!selectMode){handleFullscreenImage(item.img)}
+                        }}
                         sx={{
                             width: '100%',
                             aspectRatio: '1 / 1',
@@ -43,8 +46,8 @@ export default function MyImageList({ itemData, selectMode, selected, toggleSele
                             alignItems: 'center',
                             justifyContent: 'center',
                             overflow: 'hidden'
-                        }}
-                    >{item.type === 'img' && 
+                        }}>
+                            {item.type === 'img' &&
                         <img
                             src={`${item.img}?w=400&h=400&fit=crop`}
                             alt={item.title}
@@ -55,48 +58,43 @@ export default function MyImageList({ itemData, selectMode, selected, toggleSele
                                 objectFit: 'cover',
                             }}
                         />
-                    }
-                    {item.type === 'vid' && 
-                    
-                        <video
-                            src={`${item.img}?w=400&h=400&fit=crop`}
-                            alt={item.title}
-                            controls
-                            loading="lazy"
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                            }}
-                        />
-                    }
-                    {item.type === 'unknown' &&
+                        }
+                        {item.type === 'vid' &&
 
-                    <Box
-                
-                sx={{
-                    width: '100%',
-                    aspectRatio: '1 / 1',
-                    backgroundColor: 'black',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                    backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[100],
-                    cursor: 'pointer',
-                    flexDirection: 'column',
-                    '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200] }
-                }}
-            >
-                <InsertDriveFileIcon sx={{ fontSize: 100, color: theme.palette.secondary.main , marginBottom: 1 }} />
-                <Typography variant="body2" sx={{ fontSize:7,fontWeight: 500, marginBottom: 0.5, color: theme.palette.text.primary }}>
-                    {item.title}
-                </Typography>
-
-            </Box>
-
-                    }
-                        
+                            <video
+                                src={`${item.img}?w=400&h=400&fit=crop`}
+                                alt={item.title}
+                                controls
+                                loading="lazy"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                }}
+                            />
+                        }
+                        {item.type === 'unknown' &&
+                            <Box
+                                sx={{
+                                    width: '100%',
+                                    aspectRatio: '1 / 1',
+                                    backgroundColor: 'black',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    overflow: 'hidden',
+                                    backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[100],
+                                    cursor: 'pointer',
+                                    flexDirection: 'column',
+                                    '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200] }
+                                }}
+                            >
+                                <InsertDriveFileIcon sx={{ fontSize: 100, color: theme.palette.secondary.main, marginBottom: 1 }} />
+                                <Typography variant="body2" sx={{ fontSize: 7, fontWeight: 500, marginBottom: 0.5, color: theme.palette.text.primary }}>
+                                    {item.title}
+                                </Typography>
+                            </Box>
+                        }
                     </Box>
                 </ImageListItem>
             ))}
