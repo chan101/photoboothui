@@ -67,7 +67,7 @@ export const deleteSelectedImages = async (selected, folderContext, setIsLoading
     requests = {'folder':folderName};
   }
   else{
-      let requests = [];
+      requests = [];
       for (const url of Array.from(selected)) {
       const imageName = url.split('/').pop();
       requests.push(imageName);
