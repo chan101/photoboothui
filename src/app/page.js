@@ -2,20 +2,9 @@
 
 import * as React from 'react';
 import Box from '@mui/material/Box';
-import SpeedDial from '@mui/material/SpeedDial';
-import SpeedDialIcon from '@mui/material/SpeedDialIcon';
-import SpeedDialAction from '@mui/material/SpeedDialAction';
-import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
-import UploadIcon from '@mui/icons-material/Upload';
-import DownloadIcon from '@mui/icons-material/Download';
-import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
-import ChecklistIcon from '@mui/icons-material/Checklist';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
-import RemoveDoneIcon from '@mui/icons-material/RemoveDone';
-import CloseIcon from '@mui/icons-material/Close';
+import MySpeedDial from './components/MySpeedDial';
 import ImageList from '@mui/material/ImageList';
 import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
@@ -28,7 +17,6 @@ import FolderList from './components/FolderList';
 import UploadProgressOverlay from './components/UploadProgressOverlay';
 import LoadingOverlay from './components/LoadingOverlay';
 import SuccessSnackbar from './components/SuccessSnackbar';
-import { Fullscreen } from '@mui/icons-material';
 import FullscreenImage from './components/FullscreenImage';
 
 export default function ControlledOpenSpeedDial() {
@@ -52,17 +40,19 @@ export default function ControlledOpenSpeedDial() {
   }
 
   const [imageFullscreen, setImageFullscreen] = React.useState(false);
-  const [imageFullscreenSrc, setImageFullscreenSrc] = React.useState('');
+  const [imageFullscreenSrc, setImageFullscreenSrc] = React.useState(null);
 
   const handleFullscreenImage = (src) => {
     setImageFullscreenSrc(src);
     setImageFullscreen(true);
+    setEnableDeleteFolder(false);
   }
 
   // Create folder dialog state
   const [createFolderOpen, setCreateFolderOpen] = React.useState(false);
   const [folderName, setFolderName] = React.useState('');
   const [isCreatingFolder, setIsCreatingFolder] = React.useState(false);
+  const [enableDeleteFolder, setEnableDeleteFolder] = React.useState(false);
 
 
   const [openError, setOpenError] = React.useState(false);
@@ -170,6 +160,7 @@ export default function ControlledOpenSpeedDial() {
         setItemData([]);
         setSelected(new Set());
         setSelectMode(false);
+        setEnableDeleteFolder(false);
       }
     };
 
@@ -190,11 +181,11 @@ export default function ControlledOpenSpeedDial() {
 
   // delete selected images
   const deleteSelected = () => {
-    deleteSelectedImages(selected, pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar, null);
+    deleteSelectedImages(selected, pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar, setSelectMode, null);
   };
 
   const handleDeleteFolder = (folderName) => {
-    deleteSelectedImages('folder', pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar, folderName);
+    deleteSelectedImages('folder', pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar, setSelectMode, folderName);
   }
 
   // bulk select/unselect
@@ -212,10 +203,13 @@ export default function ControlledOpenSpeedDial() {
 
   // handle folder click to navigate
   const handleFolderClick = (folderName) => {
-    setPathname((prev) => {
-      const newPath = prev === '/' ? `/${folderName}` : `${prev}/${folderName}`;
-      return newPath;
-    });
+    if (!enableDeleteFolder) {
+      setPathname((prev) => {
+        const newPath = prev === '/' ? `/${folderName}` : `${prev}/${folderName}`;
+        return newPath;
+      });
+    }
+
   }
 
   // handle parent folder click to navigate
@@ -229,26 +223,11 @@ export default function ControlledOpenSpeedDial() {
     });
   }
 
-  // conditional actions based on selectMode
-  const actions = selectMode
-    ? [
-      { icon: <DoneAllIcon />, name: 'SelectAll', label: 'Select All' },
-      { icon: <RemoveDoneIcon />, name: 'UnselectAll', label: 'Unselect All' },
-      { icon: <DownloadIcon />, name: 'Download', label: 'Download' },
-      { icon: <DeleteForeverIcon />, name: 'Delete', label: 'Delete' },
-      { icon: <CloseIcon />, name: 'Close', label: 'Close Select Mode' },
-    ]
-    : [
-      { icon: <ChecklistIcon />, name: 'Select', label: 'Select' },
-      { icon: <CreateNewFolderIcon />, name: 'CreateFolder', label: 'Create Folder' },
-      { icon: <UploadIcon />, name: 'Upload', label: 'Upload' },
-    ];
-
   return (
     <Box sx={{ width: '100%', height: '100vh', flexGrow: 1 }}>
       <UploadProgressOverlay open={isUploading} progress={progress} />
       <LoadingOverlay open={isLoading} />
-      <FullscreenImage open={imageFullscreen} src={imageFullscreenSrc} onClose={() => {setImageFullscreen(false); setImageFullscreenSrc('')}}/>
+      <FullscreenImage open={imageFullscreen} src={imageFullscreenSrc} onClose={() => { setImageFullscreen(false); setImageFullscreenSrc(null) }} />
       <ErrorSnackbar
         open={openError}
         onClose={() => setOpenError(false)}
@@ -260,60 +239,15 @@ export default function ControlledOpenSpeedDial() {
         message={messageSuccess}
       />
       <ImageList cols={cols}>
-        {<FolderList folders={folders} handleFolderClick={handleFolderClick} theme={theme} pathname={pathname} handleParentFolderClick={handleParentFolderClick} handleDeleteFolder={handleDeleteFolder} />}
-        <MyImageList itemData={itemData} selectMode={selectMode} selected={selected} toggleSelect={toggleSelect} theme={theme} handleFullscreenImage={handleFullscreenImage} />
+        <FolderList folders={folders} handleFolderClick={handleFolderClick} theme={theme} pathname={pathname} handleParentFolderClick={handleParentFolderClick} handleDeleteFolder={handleDeleteFolder} enableDeleteFolder={enableDeleteFolder} />
+        <MyImageList itemData={itemData} selectMode={selectMode} selected={selected} toggleSelect={toggleSelect} theme={theme} handleFullscreenImage={handleFullscreenImage}/>
       </ImageList>
 
-      <SpeedDial
-        ariaLabel="SpeedDial controlled open example"
-        sx={{ position: 'fixed', bottom: '15%', right: '8%' }}
-        icon={<SpeedDialIcon />}
-        onClose={handleClose}
-        onOpen={handleOpen}
-        open={speedDialOpen}
-      >
-        {actions.map((action) => (
-          <SpeedDialAction
-            key={action.name}
-            icon={action.icon}
-            slotProps={{
-              tooltip: {
-                title: action.label,
-              },
-            }}
-            onClick={async () => {
-              if (action.name === 'Select') {
-                handleSelectModeToggle();
-              }
-              if (action.name === 'CreateFolder') {
-                handleCreateFolderOpen();
-              }
-              if (action.name === 'Upload') {
-                handleUploadClick();
-              }
-              if (action.name === 'SelectAll') {
-                selectAll();
-              }
-              if (action.name === 'UnselectAll') {
-                unselectAll();
-              }
-              if (action.name === 'Download') {
-                await downloadSelected();
-              }
-              if (action.name === 'Close') {
-                closeSelectMode();
-              }
-              if (action.name === 'Delete') {
-                deleteSelected();
-              }
-
-            }}
-          />
-        ))}
-      </SpeedDial>
+      <MySpeedDial selectMode={selectMode} handleClose={handleClose} handleOpen={handleOpen} speedDialOpen={speedDialOpen}
+        handleSelectModeToggle={handleSelectModeToggle} handleCreateFolderOpen={handleCreateFolderOpen} handleUploadClick={handleUploadClick}
+        selectAll={selectAll} unselectAll={unselectAll} downloadSelected={downloadSelected} closeSelectMode={closeSelectMode} deleteSelected={deleteSelected} deleteFolder={setEnableDeleteFolder} />
 
       <Dialog open={createFolderOpen} onClose={handleCreateFolderClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Create New Folder</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <TextField
             autoFocus
@@ -334,7 +268,9 @@ export default function ControlledOpenSpeedDial() {
           <Button
             onClick={handleCreateFolder}
             variant="contained"
-            disabled={!folderName.trim() || isCreatingFolder}
+            disabled={!folderName.trim() || isCreatingFolder || folderName.includes("/")
+              || folderName.includes(" ") || folderName.includes("\\")
+            }
           >
             {isCreatingFolder ? 'Creating...' : 'OK'}
           </Button>
@@ -344,7 +280,6 @@ export default function ControlledOpenSpeedDial() {
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*,video/*"
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />

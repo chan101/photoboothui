@@ -11,6 +11,7 @@ import axios from 'axios';
  * - md (960px - 1264px): 3 columns
  * - lg (1264px+): 4 columns
  */
+
 export const useDynamicCols = () => {
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down('sm'));
@@ -58,9 +59,12 @@ export const downloadSelectedImages = async (selected) => {
 
 
 
-export const deleteSelectedImages = async (selected, folderContext, setIsLoading, setRefresh, showSuccess, throwError, folderName) => {
+export const deleteSelectedImages = async (selected, folderContext, setIsLoading, setRefresh, showSuccess, throwError, setSelectMode,folderName) => {
+
+  
+  if (selected !== 'folder' && selected.size === 0) {setSelectMode(false) ;return};
+
   setIsLoading(true);
-  if (selected !== 'folder' && selected.size === 0) return;
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   let requests;
   if(selected === 'folder'){
@@ -89,9 +93,13 @@ export const deleteSelectedImages = async (selected, folderContext, setIsLoading
       showSuccess("File/s deleted successfully")
       return true;
     }
+    if(selected === 'folder'){
+      throwError('Failed to delete folder, please ensure the folder is empty.');
+    }
+    else{
+      throwError('Failed to delete images/files.');
+    }
     
-    console.error('Failed to delete images');
-    throwError('Failed to delete images');
     setIsLoading(false);
     setRefresh(prev => prev+1);
     return false;
@@ -166,11 +174,13 @@ export const uploadFiles = async (files, folderContext, setProgress,showSuccess,
   }
 };
 
+
 export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSuccess, throwError) => {
   
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   // Expose STATIC_RESOURCE_PATH to the browser via NEXT_PUBLIC_ prefix
   const staticResourcePath = process.env.NEXT_PUBLIC_STATIC_RESOURCE_PATH || baseUrl || '/images';
+  const compressedImage = process.env.NEXT_PUBLIC_COMPRESSED || baseUrl || '/scaleImage';
   try {
     setIsLoading(true);
     const url = `${baseUrl}${folderContext}`;
@@ -199,10 +209,12 @@ export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSu
           const ext = (name.split('.').pop() || '').toLowerCase();
           const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
           const isVideo = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'].includes(ext);
+          const imageURL = `${staticResourcePath}${folderContext}/${path}`;
+          const scaleImage = `${compressedImage}${folderContext}/${path}?width=500&height=500`;
           images.push({
-            img: `${staticResourcePath}${folderContext}/${path}`,
+            img: imageURL,
             title: name,
-            url: `${baseUrl}${path}`,
+            url: scaleImage,
             type: isImage?'img':isVideo?'vid':'unknown',
           });
         }
@@ -220,7 +232,7 @@ export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSu
     // eslint-disable-next-line no-console
     console.error('Error fetching folder and image data:', err);
     setIsLoading(false);
-    throwError("Uhhhhh......some shit ain't working right. Gotta check the f**king logs");
+    throwError("Uhhhhh......some shit ain't working right.");
     return { folders: [], images: [] };
   }
   

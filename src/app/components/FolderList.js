@@ -4,7 +4,9 @@ import Typography from '@mui/material/Typography';
 import FolderIcon from '@mui/icons-material/Folder';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-export default function FolderList({ folders, handleFolderClick, theme, pathname, handleParentFolderClick, handleDeleteFolder}) {
+export default function FolderList({ folders, handleFolderClick, theme, pathname, handleParentFolderClick, handleDeleteFolder, enableDeleteFolder}) {
+
+    const folderIconSize = enableDeleteFolder?150:200;
     return (<>
             {pathname !== "/" && <ImageListItem
             key="parent-folder"
@@ -17,6 +19,7 @@ export default function FolderList({ folders, handleFolderClick, theme, pathname
             <Box
                 onClick={() => handleParentFolderClick()}
                 sx={{
+                    borderRadius: 2,
                     width: '100%',
                     aspectRatio: '1 / 1',
                     backgroundColor: 'black',
@@ -30,7 +33,7 @@ export default function FolderList({ folders, handleFolderClick, theme, pathname
                     '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200] }
                 }}
             >
-                <FolderIcon sx={{ fontSize: 150, color: theme.palette.primary.main, marginBottom: 1 }} />
+                <FolderIcon sx={{ fontSize: 200, color: theme.palette.primary.main, marginBottom: 1 }} />
                 <Typography variant="body2" sx={{ position: "absolute", fontSize:15,fontWeight: 500, marginBottom: 0.5, color: theme.palette.text.primary }}>
                     Parent Folder
                 </Typography>
@@ -47,8 +50,9 @@ export default function FolderList({ folders, handleFolderClick, theme, pathname
                 }}
             >
                 <Box
-                    
+                    onClick={() => handleFolderClick(folder.name)} 
                     sx={{
+                        borderRadius: 2,
                         width: '100%',
                         aspectRatio: '1 / 1',
                         backgroundColor: 'black',
@@ -61,8 +65,8 @@ export default function FolderList({ folders, handleFolderClick, theme, pathname
                         cursor: 'pointer',
                         '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200] }
                     }}
-                >   <DeleteIcon sx={{ fontSize: 35, color: "red", position: "absolute", top:'5%', right:'5%'}} onClick={()=>handleDeleteFolder(folder.name)}/>
-                    <FolderIcon sx={{ fontSize: 150, color: theme.palette.primary.main, marginBottom: 1 }} onClick={() => handleFolderClick(folder.name)}/>
+                >   {enableDeleteFolder && <DeleteIcon sx={{ fontSize: 35, color: "red", position: "absolute", top:'5%', right:'5%'}} onClick={()=>handleDeleteFolder(folder.name)}/>}
+                    <FolderIcon sx={{ fontSize: folderIconSize, color: theme.palette.primary.main, marginBottom: 1 }} />
                     <Typography variant="body2" sx={{ position: "absolute", fontSize: 15 ,fontWeight: 500, marginBottom: 0.5, color: theme.palette.text.primary }}>
                         {folder.name}
                     </Typography>

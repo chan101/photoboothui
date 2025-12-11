@@ -13,7 +13,7 @@ export default function MyImageList({ itemData, selectMode, selected, toggleSele
                     key={item.title}
                     sx={{ position: 'relative', cursor: selectMode ? 'pointer' : 'default' }}
                     onClick={() => {
-                        if (selectMode){toggleSelect(item.img)}
+                        if (selectMode) { toggleSelect(item.img) }
                     }}
                 >
                     {selectMode && (
@@ -30,13 +30,13 @@ export default function MyImageList({ itemData, selectMode, selected, toggleSele
                                 bgcolor: 'rgba(255,255,255,0.75)',
                                 borderRadius: '50%'
                             }}
-                            onClick={(e) => e.stopPropagation()} // prevents parent click
+                            onClick={(e) => e.stopPropagation()} 
                         />
                     )}
 
                     <Box
-                        onClick={()=>{
-                            if (!selectMode){handleFullscreenImage(item.img)}
+                        onClick={() => {
+                            if (!selectMode) { handleFullscreenImage(item.img) }
                         }}
                         sx={{
                             width: '100%',
@@ -47,22 +47,22 @@ export default function MyImageList({ itemData, selectMode, selected, toggleSele
                             justifyContent: 'center',
                             overflow: 'hidden'
                         }}>
-                            {item.type === 'img' &&
-                        <img
-                            src={`${item.img}?w=400&h=400&fit=crop`}
-                            alt={item.title}
-                            loading="lazy"
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                            }}
-                        />
+                        {item.type === 'img' &&
+                            <img
+                                src={item.url}
+                                alt={item.title}
+                                sizes='(max-width: 10px) 100vw, 10px'
+                                loading="lazy"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                }}
+                            />
                         }
                         {item.type === 'vid' &&
-
                             <video
-                                src={`${item.img}?w=400&h=400&fit=crop`}
+                                src={item.img}
                                 alt={item.title}
                                 controls
                                 loading="lazy"
