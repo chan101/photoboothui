@@ -4,11 +4,6 @@ import * as React from 'react';
 import Box from '@mui/material/Box';
 import MySpeedDial from './components/MySpeedDial';
 import ImageList from '@mui/material/ImageList';
-import Dialog from '@mui/material/Dialog';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
 import { useTheme } from '@mui/material/styles';
 import { useDynamicCols, downloadSelectedImages, deleteSelectedImages, createFolderAPI, uploadFiles, fetchFolderAndImageData } from './utils';
 import ErrorSnackbar from './components/ErrorSnackbar';
@@ -18,6 +13,9 @@ import UploadProgressOverlay from './components/UploadProgressOverlay';
 import LoadingOverlay from './components/LoadingOverlay';
 import SuccessSnackbar from './components/SuccessSnackbar';
 import FullscreenImage from './components/FullscreenImage';
+
+import MyDialog from './components/MyDialog'
+import PopUpDialog from './components/PopUpDialog'
 
 export default function ControlledOpenSpeedDial() {
   const theme = useTheme();
@@ -181,10 +179,18 @@ export default function ControlledOpenSpeedDial() {
 
   // delete selected images
   const deleteSelected = () => {
+    
+    const ok = window.confirm(`Are you sure you want to delete ${selected.size} item/s?`);
+    if (!ok) return;
+    
     deleteSelectedImages(selected, pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar, setSelectMode, null);
   };
 
   const handleDeleteFolder = (folderName) => {
+    
+    const ok = window.confirm(`Are you sure you want to delete the folder "${folderName}" ?`);
+    if (!ok) return;
+
     deleteSelectedImages('folder', pathname, setIsLoading, setRefresh, showSuccessSnackbar, throwErrorSnackbar, setSelectMode, folderName);
   }
 
@@ -223,6 +229,17 @@ export default function ControlledOpenSpeedDial() {
     });
   }
 
+  const [popUpQuestion, setPopUpQuestion] = React.useState(false);
+
+  const handlePopUpDialogYes = () => {
+    return true;
+  }
+
+  const handlePopUpDialogNo = () => {
+    return false;
+  }
+  
+
   return (
     <Box sx={{ width: '100%', height: '100vh', flexGrow: 1 }}>
       <UploadProgressOverlay open={isUploading} progress={progress} />
@@ -247,35 +264,11 @@ export default function ControlledOpenSpeedDial() {
         handleSelectModeToggle={handleSelectModeToggle} handleCreateFolderOpen={handleCreateFolderOpen} handleUploadClick={handleUploadClick}
         selectAll={selectAll} unselectAll={unselectAll} downloadSelected={downloadSelected} closeSelectMode={closeSelectMode} deleteSelected={deleteSelected} deleteFolder={setEnableDeleteFolder} />
 
-      <Dialog open={createFolderOpen} onClose={handleCreateFolderClose} maxWidth="sm" fullWidth>
-        <DialogContent sx={{ pt: 2 }}>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Folder Name"
-            value={folderName}
-            onChange={(e) => setFolderName(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleCreateFolder();
-              }
-            }}
-            placeholder="Enter folder name"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCreateFolderClose}>Cancel</Button>
-          <Button
-            onClick={handleCreateFolder}
-            variant="contained"
-            disabled={!folderName.trim() || isCreatingFolder || folderName.includes("/")
-              || folderName.includes(" ") || folderName.includes("\\")
-            }
-          >
-            {isCreatingFolder ? 'Creating...' : 'OK'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <MyDialog createFolderOpen={createFolderOpen} handleCreateFolderClose={handleCreateFolderClose}
+      folderName={folderName} setFolderName={setFolderName} handleCreateFolder={handleCreateFolder}
+      isCreatingFolder={isCreatingFolder} />
+      
+      <PopUpDialog popUpQuestion={popUpQuestion} setPopUpQuestion={setPopUpQuestion}/>
       <input
         ref={fileInputRef}
         type="file"

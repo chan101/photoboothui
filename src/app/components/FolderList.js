@@ -6,7 +6,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function FolderList({ folders, handleFolderClick, theme, pathname, handleParentFolderClick, handleDeleteFolder, enableDeleteFolder}) {
 
-    const folderIconSize = enableDeleteFolder?150:200;
+    const folderIconSize = enableDeleteFolder?140:170;
     return (<>
             {pathname !== "/" && <ImageListItem
             key="parent-folder"
@@ -33,7 +33,7 @@ export default function FolderList({ folders, handleFolderClick, theme, pathname
                     '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200] }
                 }}
             >
-                <FolderIcon sx={{ fontSize: 200, color: theme.palette.primary.main, marginBottom: 1 }} />
+                <FolderIcon sx={{ fontSize: 170, color: theme.palette.primary.main, marginBottom: 1 }} />
                 <Typography variant="body2" sx={{ position: "absolute", fontSize:15,fontWeight: 500, marginBottom: 0.5, color: theme.palette.text.primary }}>
                     Parent Folder
                 </Typography>

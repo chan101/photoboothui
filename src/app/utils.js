@@ -207,7 +207,7 @@ export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSu
           folders.push({ name, date: entry.date || null });
         } else {
           const ext = (name.split('.').pop() || '').toLowerCase();
-          const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
+          const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg', 'heic'].includes(ext);
           const isVideo = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'].includes(ext);
           const imageURL = `${staticResourcePath}${folderContext}/${path}`;
           const scaleImage = `${compressedImage}${folderContext}/${path}?width=500&height=500`;
