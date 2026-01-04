@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import Typography from '@mui/material/Typography';
+import RetryImage from './RetryImage';
 
 export default function MyImageList({ itemData, selectMode, selected, toggleSelect, theme, handleFullscreenImage }) {
     return (
@@ -47,19 +48,7 @@ export default function MyImageList({ itemData, selectMode, selected, toggleSele
                             justifyContent: 'center',
                             overflow: 'hidden'
                         }}>
-                        {item.type === 'img' &&
-                            <img
-                                src={item.url}
-                                alt={item.title}
-                                sizes='(max-width: 10px) 100vw, 10px'
-                                loading="lazy"
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                }}
-                            />
-                        }
+                        {item.type === 'img' && <RetryImage src={item.url} alt={item.title} /> }
                         {item.type === 'vid' &&
                             <video
                                 src={item.img}

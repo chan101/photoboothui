@@ -180,7 +180,7 @@ export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSu
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
   // Expose STATIC_RESOURCE_PATH to the browser via NEXT_PUBLIC_ prefix
   const staticResourcePath = process.env.NEXT_PUBLIC_STATIC_RESOURCE_PATH || baseUrl || '/images';
-  const compressedImage = process.env.NEXT_PUBLIC_COMPRESSED || baseUrl || '/scaleImage';
+  const compressedImage = process.env.NEXT_PUBLIC_COMPRESSED || baseUrl || '/images/thumbnail';
   try {
     setIsLoading(true);
     const url = `${baseUrl}${folderContext}`;
@@ -210,7 +210,7 @@ export const fetchFolderAndImageData = async (folderContext, setIsLoading,showSu
           const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg', 'heic'].includes(ext);
           const isVideo = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'm4v'].includes(ext);
           const imageURL = `${staticResourcePath}${folderContext}/${path}`;
-          const scaleImage = `${compressedImage}${folderContext}/${path}?width=500&height=500`;
+          const scaleImage = `${compressedImage}${folderContext}/${path}`;
           images.push({
             img: imageURL,
             title: name,
